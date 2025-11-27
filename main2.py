@@ -1,53 +1,83 @@
-#O codigo ta em ingles, caso isso seja ruim pra correção de tarefas porfavor avisa na correção
-#alem disso eu posso misturar ingles e português de vez em quando, caso isso aconteça porfavor me avisa, acho que é um custume ruim da minha parte
-
-
-#gostaria de algumas dicas de como otimizar meu codigo e como estudar ai9nda mais fora da ebac, se puder responder esse comentario eu agrade;o!
-from fastapi import FastAPI, HTTPException
+#Imports
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 from typing import Optional
-app = FastAPI()
+import os
+import secrets 
 
+user_admin = "admin"
+password_admin = "admin"
+
+security = HTTPBasic()
+
+app = FastAPI()
 dictionary_2 = {}
 
-#Constructor(eu acho)
+#Constructor
 class Book(BaseModel):
     book_name: str
     book_author: str 
     book_year: int
 
+class Book_Patch(BaseModel):
+    book_name: Optional[str] = None
+    book_author: Optional[str] = None
+    book_year: Optional[int] = None
 
-#método nao muda 
+def user_authentication(credentials: HTTPBasicCredentials = Depends(security)):
+    is_username_correct = secrets.compare_digest(credentials.username, user_admin)
+    is_password_correct = secrets.compare_digest(credentials.password, password_admin)
+
+    if not (is_username_correct and is_password_correct):
+        raise HTTPException(
+            status_code=401,
+            detail="username or password incorrect.",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+    return credentials
+
 @app.get("/books")
-def get_books():
+def get_books(credentials: HTTPBasicCredentials = Depends(user_authentication)):
     if not dictionary_2:
         return{"No book found!"}
     else:
         return{"books":dictionary_2}
     
-#modificado (palavra chave nao é mais .dict() e sim  .model_dump(), o pydantic atualizou em 23 de junho de 2023 e  essaa palavra chave foi atulizada :p)
+#Usar .model_dump() ao invés de .dict()
 @app.post("/add")
-def post_books(id_book: int, book:Book):
+def post_books(id_book: int, book:Book, credentials: HTTPBasicCredentials = Depends(user_authentication)):
     if id_book in dictionary_2:
         raise HTTPException(status_code=400, detail="This book already exists!")
     else:
         dictionary_2[id_book] = book.model_dump()
-#mesma coisa aq
+
+
 @app.put("/update/{id_book}")
-def put_books(id_book: int, book:Book):
+def put_books(id_book: int, book:Book, credentials: HTTPBasicCredentials = Depends(user_authentication)):
     book_item = dictionary_2.get(id_book)
 
     if not book_item:
         raise HTTPException(status_code=404, detail="Book not found!")
     else:
-        book_item[id_book] = book.model_dump()
-        
+        dictionary_2[id_book] = book.model_dump()
         return {"message": "Book updated successfully!"}
-#mexendo com id
+    
+@app.patch("/edit/{id_book}")
+def patch_books(id_book: int, data:Book_Patch, credentials: HTTPBasicCredentials = Depends(user_authentication)):
+    book_item = dictionary_2.get(id_book)
+    if not book_item:
+        raise HTTPException(status_code=404, detail="Book not found!")
+    else:
+        update_data = data.model_dump(exclude_unset=True)
+        for k, v in update_data.items():
+            book_item[k] = v
+
 @app.delete("/delete/{id_book}")
-def delete_books(id_book: int):
+def delete_books(id_book: int, credentials: HTTPBasicCredentials = Depends(user_authentication)):
     if id_book not in dictionary_2:
         raise HTTPException(status_code=404, detail="Book not found!")
     else:
         del dictionary_2[id_book]
-        return {"message": "Book deleted successfully!"}
+        return {"message": "Book deleted successfully!"} 
