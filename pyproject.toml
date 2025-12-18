@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "api_books"
+version = "0.1.0"
+description = ""
+authors = ["Gabriel Zatz Mazin <gabrielmazin7@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.13"
+sqlalchemy = "^2.0.45"
+aiosqlite = "^0.21.0"
+fastapi = "^0.124.2"
+uvicorn = "^0.38.0"
+pydantic = "^2.12.5"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
